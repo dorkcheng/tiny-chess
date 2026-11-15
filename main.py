@@ -1,105 +1,2 @@
-"""Tiny Chess Engine (MIT License)"""
-import json, os, urllib.request
-
-U = os.environ["MAKEFUN_ENV_URL"].rstrip("/")
-V = {"p": 100, "n": 320, "b": 330, "r": 500, "q": 900, "k": 20000}
-
-def post(ep, data):
-    req = urllib.request.Request(U + ep, data=json.dumps(data).encode(), headers={"Content-Type": "application/json"})
-    return json.loads(urllib.request.urlopen(req).read())
-
-def parse_fen(fen):
-    sqs, col = [], fen.split()[1]
-    for ch in fen.split()[0]:
-        if ch != "/": sqs.extend("." * int(ch) if ch.isdigit() else ch)
-    return sqs, col
-
-def attack(b, s, t):
-    p = b[s]
-    if p == ".": return False
-    fr, fc = divmod(s, 8)
-    tr, tc = divmod(t, 8)
-    dr, dc = tr - fr, tc - fc
-    ar, ac = abs(dr), abs(dc)
-    q = p.lower()
-    if q == "p": return ac == 1 and dr == (1 if p.isupper() else -1)
-    if q == "n": return (ar, ac) in ((1, 2), (2, 1))
-    if q == "k": return max(ar, ac) == 1
-    if q in ("r", "q") and (dr == 0 or dc == 0):
-        step = ((dr > 0) - (dr < 0)) * 8 + ((dc > 0) - (dc < 0))
-        return all(b[s + i * step] == "." for i in range(1, max(ar, ac)))
-    if q in ("b", "q") and ar == ac:
-        step = ((dr > 0) - (dr < 0)) * 8 + ((dc > 0) - (dc < 0))
-        return all(b[s + i * step] == "." for i in range(1, ar))
-    return False
-
-def count_atk(b, t, col):
-    is_w = (col == "w")
-    return sum(attack(b, s, t) for s, p in enumerate(b) if p != "." and (p.isupper() == is_w))
-
-def pst(p, c, r, b):
-    dc, dr = 4 - abs(3.5 - c), 4 - abs(3.5 - r)
-    if p == "p": return r * 7 + dc * 3
-    if p == "n": return dc * 8 + dr * 8 + (12 if 3 <= r <= 5 else 0)
-    if p == "b": return dc * 4 + dr * 5 + (8 if abs(c - r) in (0, 1, 6, 7) else 0)
-    if p == "r": return dc * 3 + (8 if all(x != "P" for x in b[c::8]) else 0)
-    return (dc + dr) * (3 if p == "q" else -3)
-
-def sim_mv(b, mv, turn):
-    s = (ord(mv[1]) - 49) * 8 + (ord(mv[0]) - 97)
-    t = (ord(mv[3]) - 49) * 8 + (ord(mv[2]) - 97)
-    p, cap = b[s], b[t]
-    nb = list(b)
-    nb[t], nb[s] = p, "."
-    if p.lower() == "p":
-        if t % 8 != s % 8 and cap == ".":
-            nb[t - 8 if turn == "w" else t + 8] = "."
-            cap = "p"
-        if len(mv) > 4: nb[t] = mv[4].upper() if turn == "w" else mv[4].lower()
-    if p.lower() == "k" and abs(t - s) == 2:
-        rs = 7 if t > s else 0
-        rt = t - 1 if t > s else t + 1
-        nb[rt], nb[rs] = nb[rs], "."
-    return nb, p, cap, t
-
-def choose_move(fen, moves):
-    b, turn = parse_fen(fen)
-    enemy = "b" if turn == "w" else "w"
-    is_w = (turn == "w")
-    best_mv, best_sc = moves[0], -10**9
-
-    for mv in moves:
-        nb, p, cap, dst = sim_mv(b, mv, turn)
-        sc = 0
-        for i, q in enumerate(nb):
-            if q != ".":
-                r, c = divmod(i, 8)
-                nr = r if q.isupper() else (7 - r)
-                val = V[q.lower()] + pst(q.lower(), c, nr, nb)
-                sc += val if q.isupper() else -val
-        sc *= (1 if is_w else -1)
-
-        if cap != ".": sc += V[cap.lower()] * 12 - V[p.lower()]
-        if len(mv) > 4: sc += 900
-
-        en_atks = count_atk(nb, dst, enemy)
-        if en_atks > 0:
-            defended = count_atk(nb, dst, turn)
-            sc -= V[nb[dst].lower()] * (3 if defended else 7) * en_atks
-
-        my_k = next((i for i, q in enumerate(nb) if q == ("k" if is_w else "K")), -1)
-        en_k = next((i for i, q in enumerate(nb) if q == ("K" if is_w else "k")), -1)
-        if my_k >= 0 and count_atk(nb, my_k, enemy): sc -= 10000
-        if en_k >= 0 and count_atk(nb, en_k, turn): sc += 80
-
-        if sc > best_sc: best_sc, best_mv = sc, mv
-
-    return best_mv
-
-while True:
-    g = post("/game", {})
-    if g.get("status") == "done": break
-    while g.get("status") == "your_move":
-        mv = choose_move(g["fen"], g["legal_moves"])
-        g = post("/move", {"game": g["game"], "move": mv})
-
+#coding:l1
+import lzma;exec(lzma.decompress('\x000\0\0$\0\0\0\0\0\0\x004œ%Å¯^´Ìû•2h1$£41f*Ìx‹´\\vôS&4Ài˜ª×ñ¨9©ƒT ÀoSgÍéA[ã¶W#ªà`BÑ‡E\\å/™üR5´ügåeÆH9¨“hOLÈçr&²¡ª†0.–W	6ìËNÃÂşwBöHÜK¶qv†f@8“:ÏSüá¡‘äV%NìğE¦W»§fH:fÉ±µ×‹¦"µ™cg4ÓÃ)Ê0ÀIE\rÏÁZÖªûu˜TošÑrAb/…G -gBøñ(Q.Uİt$/Œv‚3bL±Û16Ò9{oÛ\r-ÏÙêäªëúÎq–åˆmaf¡ƒ:tÃÍï•Çf„¹óKTú­*Iw3ªtÕWhÅ=?è‚\0ndÒj5+õœ3‚<è"•­–,èc>\n( \nÇp(óN˜Åòäaò\n<Báí$1ôÕâ]»XÀŠŠÃÈ¯jÊNğYƒQ²>M	¯+³Rå\\Nğ2\0|TY—«äç®·Á\\Á^±"ó’t4úDrK(÷(höûÁùmCYèú<F”^[9£†7F‹àÔ‹>±^HMJ^„ä—K‡ÅùTÄ\nö«ŒC(2k»ßpèè$Ÿ&ì3P3å@¡ÙìÑ›äÄ<úÍ!lŸäPi¦QuX K&ÅÚÄçiz$—q/q´TÙ¾{ñj¹	ë×®\n~2Xß&¯“6åY"§{ÙùKàğZgçD9±2ìşõRP2w¤ÂàúxPŞ¼ÓMU+(A€¦}êOÙFÌ›£-¸›í‚6Ìy=Ó3\0êõ÷uGMö¼¶ŠP-ÿ0aÍ[Œá†Ñ0\'ôRieN\n¾ò!§ŞuRENÄ¡sº“ËË÷šCPñ>\0W‰:w¬‰«ÊÌ\'ºu1tÆs°ÒÜË¨"¸iöV¼†rÕë«ˆìŸClªfL_ÈwŸ­Ş	~L«kğ\\Ø“<V§èØ²îr¬ñ‡Q™’g–õnJ›XH0IQ†¸—ÒC:$‹£LæG:õ^î‡éûGÔH_t×JvŸ´<Ñ›é™­ê¥;B„)·ğÏ®şUziQO3ş&!;}Â¢q¨¥™G’p\'hfgŒù5j»Ú*¨ŞŠxí¥BùY•S+$ß‹Âëò¤ŸMèeİô×ÙØñ—Ã+£l_«¥qÿàQ7Lò‡—1yu±9¬7E7„Kb»ÒØ®c<²=ëàp\0‹$Æzé›báf*úäñ*ÎRö•—jäk`S4ıU­½Úü„Ğâ›¶<Ó÷k:ÍMÿréî÷¡“	èâ„$ŠÌí‡v·nëéÈr9»“hE¼(¯•ÜíùmgF¨6dÈñH<2‚4skÂ†Ğkf]ß"Âü\'A8Æ£\0BìnğSè‚İ•OşøÃP0:ï´d¾…›ãl©u‘¹7_ivì¬QŠæ€‰Ö†wo×€g2•j„—¯åÑ­g„	}ˆZıÓƒtJbñ9b&×ñ°çÔ3~ ZO¥\\ŸÕ¸)Øô?ö]’œÕRB}*PCuŠUÑôÓÇÅŸ$(È8—Ş`Äƒ÷q7¹ËµÑ¤¿Dæô)D]¼ºş «\\^Óè.~Fğ¯£¸®wÓeJ’Úcg[`èÃ´ã›ºƒ@ğ´‘O’äk³¦¡±5¢™&5_cGÛ9ŒzC´ï,y²\\xóCš_SCÊ´O‡Ö-¥\0îÕ*vÅ¸nvö¼òw5Nã5ÄŒe2¸Ÿ­¨›2G,”È•–´ÖH¹Óæ0j3¬À¾˜eıŸX $Â\0>]éB°›Æ¤mæmRXÿ9[:DÌúàÃgòğ‰sUÉ¦ü6ÜyÿO-¨‹‰õ›·q€~Ú¾ÃĞÎà·ÊƒFÏæCÂ_;ô\r[C§L õ”„¢ÍùÎ†b,=«´àl`´;‘s]ÊŒ…©lW3L*r}ñÉè•6Íì£VnƒMìé|ïşÉ€Ùj›óáà”BaŒ•úª˜’x«ó±n?öu8ZŒÇœ\'˜V9úÇí,Y¯‡¤a5“¼y	µQƒ æ8•öàñ7˜ºvÁ¿ÕÎ´˜ªÜßÅ—È"®"¤¼Ÿg\\\n±˜vHmGY‹"å‰3„1j*Ğ÷y!†X¤ÕJRI6CXüñùì´\'Ï¢•âÀª·œ•£3ïx":†YÅMöŞ¶‡ÑõŸæåç©YGô\nç	Gm;³ „†U6U¸ŞqZœòÇ\nDŒóPÑ¾1EøJc+T2$â‹¿Ò,5^õçÉ‹IXı	à`Ëì;ì\n^Í;˜ºÌÈBMìcY±Ê™2ékğİRËµZô\0÷ùäÂ€ş+j–ç×6……c$ªÿ²ÈÛÑ‘ƒ¡NGğCƒ[q½_	=F"¨`†Ç€é1’¦Æ²\'PĞşñ†é"_"Dz\r±lıLİÙf9{}ëa«J¡N\n”axhŸiW†éàt"Iz!4Z®ã#Ä»§IõtÀ¿›Ìæa6ß?zlã·QÚ5"˜(—y“3²Ÿ ä”‘!²=SUƒóÈl÷t¥JĞ%]?oÆËsHTyÖ×:~Úš™\'ÇÑ«Ê>xóßì€¯[éS\\]‚zœ²ê1S;gÅ\r(,f$àÒ¿÷¤e_“ü8ğÁ}\r2˜NwoÏÅC$\rgªÃÍOÂZ{åßu³‹ô¤¾¤İmH€j~òY‘TšpşİBË#C,²º‘%±~6÷¯bšıÅcšK#L¦4Çğ‰E$Ù=HLrø}PôÕağ/÷P@EWŸ=è7s4\'ÅË&©Z—Ítí3bÚ‘¾†¹Gä³ Z³r¯AÛeÊìa>#ïsaNj5aYº íá¼Ğ\'bŠ\'\0G{H`s¹UÂ2ñ·ÛŸ;©ñx³âŸ~zŸtl9ÚŒ\\=¡º#ùìS ± ¢¨“­M\0u\\²í&†§3„mx6‘:İm)0[Ù}³°=1¹ÈZ4³?>ç3…ÆÚ,%pòl$(QeÀ—ÇSxmğÚşÅfyÛ´*d4Ô,tàFn”ùY÷%wÿ¶3?„şö¾&‹‹05F¸ğà«S\n;±ÄD÷Kåo¿à-Èpü/b\rÒHv8ôãØÔoÎ\nP.ı<N‰cST¸ğÒ¤‰ØÊ3(×‰Óà¤qhm¾Ìúc’!‡&ÄpE\rlÃ†‡‰“G³}<ºEœ#*èM–×ÕŠ3.‘ÎÌÜîmı³’3ÅèÑ\0^ş‡.g\'àå¼P†,·81ò¥ZÉƒ}SØ“;$e¦Útà,á­&> xœ¦z8æüÖñ)™8«êt1·w#QßôÅµÏ›¼ÎÔdJÜÖCx#L<\r 6¿wcÿÅã6§Üç>rïY"]eØşÌVÊ}ç5Sr‡˜`½J“MbÙm\0'.encode('l1')))
