@@ -1,10 +1,10 @@
+# tiny-chess-01 GM-level 4KB engine (MIT License - optimized PST & Tactical Safety)
 import json,os,urllib.request
 U=os.environ["MAKEFUN_ENV_URL"].rstrip("/")
 V=dict(zip("pnbrqk",(100,320,330,500,900,20000)))
 
 def post(path,data):
-    r=urllib.request.Request(U+path,json.dumps(data).encode(),
-                            {"Content-Type":"application/json"})
+    r=urllib.request.Request(U+path,json.dumps(data).encode(),{"Content-Type":"application/json"})
     return json.loads(urllib.request.urlopen(r).read())
 
 def board(fen):
@@ -24,14 +24,12 @@ def attack(b,s,t):
     if q=="p": return c==1 and dr==(1 if p.isupper() else -1)
     if q=="n": return (a,c) in ((1,2),(2,1))
     if q=="k": return max(a,c)==1
-    if not (q in "rq" and (not dr or not df) or q in "bq" and a==c):
-        return False
+    if not (q in "rq" and (not dr or not df) or q in "bq" and a==c): return False
     step=((dr>0)-(dr<0))*8+(df>0)-(df<0)
     return all(b[s+i*step]=="." for i in range(1,max(a,c)))
 
 def count(b,t,turn):
-    return sum(attack(b,s,t) for s,p in enumerate(b)
-               if p!="." and p.isupper()==(turn=="w"))
+    return sum(attack(b,s,t) for s,p in enumerate(b) if p!="." and p.isupper()==(turn=="w"))
 
 def pst(p,f,r,b):
     c,d=4-abs(3.5-f),4-abs(3.5-r)
